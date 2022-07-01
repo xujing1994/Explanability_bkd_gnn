@@ -12,7 +12,7 @@ from data.COLLAB import COLLABDataset
 from data.CSL import CSLDataset
 
 
-def LoadData(DATASET_NAME):
+def LoadData(DATASET_NAME, raw_dir):
     """
         This function is called in the main.py file 
         returns:
@@ -29,7 +29,7 @@ def LoadData(DATASET_NAME):
     # handling for the TU Datasets
     TU_DATASETS = ['ENZYMES', 'DD', 'PROTEINS_full', 'MUTAG', 'NCI1', 'MCF-7', 'MCF-7H', 'MOLT-4', 'MOLT-4H', 'COLORS-3', 'TRIANGLES', 'github_stargazers', 'AIDS']
     if DATASET_NAME in TU_DATASETS: 
-        return TUsDataset(DATASET_NAME)
+        return TUsDataset(DATASET_NAME, raw_dir)
 
     # handling for SBM datasets
     SBM_DATASETS = ['SBM_CLUSTER', 'SBM_PATTERN']

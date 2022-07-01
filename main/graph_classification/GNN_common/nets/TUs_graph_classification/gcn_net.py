@@ -53,8 +53,9 @@ class GCNNet(nn.Module):
         return self.MLP_layer(hg)
     
     def loss(self, pred, label):
-        class_weights = torch.tensor([0.8, 0.2])
-        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        #class_weights = torch.tensor([0.8, 0.2])
+        #criterion = nn.CrossEntropyLoss(weight=class_weights)
+        criterion = nn.CrossEntropyLoss()
         loss = criterion(pred, label)
         return loss
         

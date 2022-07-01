@@ -5,6 +5,9 @@
     "version": "0.2.0",
     "configurations": [
 
+
+
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -13,8 +16,9 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "args": [
-                "--config", "main/graph_classification/GNN_common/configs/TUS/TUs_graph_classification_GCN_NCI1_100k.json",
-                "--seed", "1"
+                "--config", "main/graph_classification/GNN_common/configs/TUS/TUs_graph_classification_GCN_AIDS_100k.json",
+                "--seed", "0",
+                "--filename", "results"
             ]
         }
     ]

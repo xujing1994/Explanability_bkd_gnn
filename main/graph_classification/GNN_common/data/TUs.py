@@ -156,10 +156,10 @@ def self_loop(g):
 
 import itertools
 class TUsDataset(torch.utils.data.Dataset):
-    def __init__(self, name):
+    def __init__(self, name, raw_dir):
         t0 = time.time()
         self.name = name
-        raw_dir = "/home/jxu8/Code/Explanability_bkd_gnn/data"
+        #raw_dir = "/home/jxu8/Code/Explanability_bkd_gnn/data"
         #dataset = TUDataset(self.name, hidden_size=1)
         dataset = LegacyTUDataset(self.name, hidden_size=1, raw_dir=raw_dir) # dgl 4.0
 

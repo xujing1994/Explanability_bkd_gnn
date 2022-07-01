@@ -1,0 +1,13 @@
+{
+    "hidden": 16,
+    "num_features": 0,
+    "num_classes": 0,
+    "dropout": 0.6,  
+    "lr": 5e-3,
+    "weight_decay": 5e-4,
+    "patience_period": 1000,
+    "num_of_epochs": 10000,
+    "should_test": true,
+    "console_log_freq": 100,
+    "device": 0
+}

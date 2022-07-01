@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
-print(sys.path)
+#print(sys.path)
 from platform import node
 import numpy as np
 import networkx as nx
@@ -16,6 +16,9 @@ from torch_geometric.transforms import NormalizeFeatures
 import time
 from models.gcn import GCN
 import enum
+from configs.config import args_parser
+import json
+import os
 
 class LoopPhase(enum.Enum):
     TRAIN = 0,
@@ -116,7 +119,7 @@ def get_main_loop(flag, config, model, cross_entropy_loss, optimizer, data, p_da
         if phase == LoopPhase.VAL:
             # Log to console
             if flag == 'clean':
-                if config['console_log_freq'] is not None and epoch % config['console_log_freq'] == 0:
+                if config['console_log_freq'] is not None and epoch % config['console_log_freq'] == -1:
                     print(f'GAT training: time elapsed= {(time.time() - time_start):.2f} [s] | epoch={epoch + 1} | val acc={accuracy}')
 
                 if accuracy > BEST_VAL_ACC or loss.item() < BEST_VAL_LOSS:
@@ -169,7 +172,7 @@ def train_model(data, p_data, model, config, flag):
         config['patience_period'],
         time.time())
 
-    BEST_VAL_ACC, BEST_VAL_LOSS, PATIENCE_CNT = [0, 0, 0]  # reset vars used for early stopping
+    BEST_VAL_ACC, BEST_VAL_LOSS, PATIENCE_CNT = [0, 1000, 0]  # reset vars used for early stopping
     BEST_VAL_ACC_att, BEST_VAL_LOSS_att, PATIENCE_CNT_att = [0, 0, 0]  # reset vars used for early stopping
 
     # Start the training procedure
@@ -188,17 +191,48 @@ def train_model(data, p_data, model, config, flag):
     # Step 5: Potentially test your model
     # Don't overfit to the test dataset - only when you've fine-tuned your model on the validation dataset should you
     # report your final loss and accuracy on the test dataset. Friends don't let friends overfit to the test data. <3
-        if config['should_test'] and epoch % 10 == 0:
+        if config['should_test'] and epoch % 100 == 0:
             if flag == 'clean':
                 test_acc = main_loop(phase=LoopPhase.TEST)
                 config['test_acc'] = test_acc
-                print(f'Test accuracy = {test_acc}')
+                #print(f'Test accuracy = {test_acc}')
+                final_test_acc = test_acc
+                '''
+                if not args.filename == "":
+                    save_path = os.path.join(args.filename, 'clean_gcn_%s' + '_%.1f_%d.txt'\
+                        %(args.dataset, args.trig_feat_val, args.trig_feat_wid))
+                    path = os.path.split(save_path)[0]
+                    isExist = os.path.exists(path)
+                    if not isExist:
+                        os.makedirs(path)
+                with open(save_path, 'a') as f:
+                    f.write('%.3f'%(test_acc))
+                    f.write('\n')
+                '''
             else:
                 test_acc, test_asr = main_loop(phase=LoopPhase.TEST)
                 config['test_acc'], config['test_asr'] = test_acc, test_asr
-                print(f'Test accuracy = {test_acc}, Test ASR = {test_asr}')
+                #print(f'Test accuracy = {test_acc}, Test ASR = {test_asr}')
+                final_test_acc = test_acc
+                final_test_asr = test_asr
+                '''
+                if not args.filename == "":
+                    save_path = os.path.join(args.filename, 'attack_gcn_%s' + '_%.1f_%d.txt'\
+                        %(args.dataset, args.trig_feat_val, args.trig_feat_wid))
+                    path = os.path.split(save_path)[0]
+                    isExist = os.path.exists(path)
+                    if not isExist:
+                        os.makedirs(path)
+                with open(save_path, 'a') as f:
+                    f.write('%.3f %.3f'%(test_acc, test_asr))
+                    f.write('\n')
+                '''
         else:
             config['test_acc'] = -1
+    if flag == 'clean':
+        return final_test_acc
+    else:
+        return final_test_acc, final_test_asr
 
 def Clean_Attack(data, p_data, config, flag):
     model = GCN(
@@ -207,27 +241,36 @@ def Clean_Attack(data, p_data, config, flag):
         dropout=config['dropout'],
         hidden = config['hidden']
     ).to(config['device'])    
+    if flag == 'clean':
+        final_test_acc = train_model(data, p_data, model, config, flag)
+        return final_test_acc
+    else:
+        final_test_acc, final_test_asr = train_model(data, p_data, model, config, flag)
+        return final_test_acc, final_test_asr
     
-    train_model(data, p_data, model, config, flag)
 
-def poison(data, device):
-    injection_rate = 0.3
+def poison(data, device, args):
+    injection_rate = args.poisoning_intensity
     train_num_nodes = len(data.y[data.train_mask])
     choice = int(train_num_nodes * injection_rate)
     y_t = max(data.y)
-    true_idx = [idx for idx in range(len(data.train_mask)) if data.train_mask[idx] ==  True]
+    if args.clean_label:
+        true_idx = [idx for idx in range(len(data.train_mask)) if data.train_mask[idx] ==  True and data.y[idx] == y_t]
+    else:
+        true_idx = [idx for idx in range(len(data.train_mask)) if data.train_mask[idx] ==  True]
     val_trigger_idxs = np.intersect1d(torch.where(data.val_mask == True)[0].numpy(), torch.where(data.y != y_t)[0].numpy())
     test_trigger_idxs = np.intersect1d(torch.where(data.test_mask == True)[0].numpy(), torch.where(data.y != y_t)[0].numpy())
     p_idxs = np.random.choice(true_idx, choice)
 
-    trig_feat_val = 1.0
-    trig_feat_wid = 10
+    trig_feat_val = args.trig_feat_val
+    trig_feat_wid = args.trig_feat_wid
     # print(p_idxs)
     p_x, p_y = data.x.detach().clone(), data.y.detach().clone()
 
     # poisoned trainset
     p_x[p_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
-    p_y[p_idxs] = y_t
+    if not args.clean_label:
+        p_y[p_idxs] = y_t
 
     # poisoned valset (only added trigger on untargeted samples)
     p_x[val_trigger_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
@@ -246,29 +289,49 @@ def poison(data, device):
     return p_data
 
 def main():
+    args = args_parser()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #dataset = Planetoid_jx('.', 'Cora', split='random', transform=NormalizeFeatures())
-    dataset = Planetoid('./data', 'Cora', split='random', transform=NormalizeFeatures())
+    dataset = Planetoid('./data', args.dataset, split='random', transform=NormalizeFeatures())
     data = dataset[0]    
-    config = {
-        "hidden": 16,
-        "num_features": data.num_features,
-        "num_classes": dataset.num_classes,
-        "dropout": 0.6,  # result is sensitive to dropout
-        "lr": 5e-3,
-        "weight_decay": 5e-4,
-        "patience_period": 1000,
-        "num_of_epochs": 500,
-        "should_test": True,
-        "console_log_freq": 5,
-        "device": device
-    }
-    data = data.to(config['device'])
+    
+    with open(args.node_gcn_config) as f:
+        config = json.load(f)
+
+    config['num_features'] = data.num_features
+    config['num_classes'] = dataset.num_classes
+    config['device'] = device
     #
-    p_data = poison(data, device)
-    Clean_Attack(data, p_data, config, flag='attack')
+    p_data = poison(data, device, args)
+    if args.train_type == 'clean':
+        final_test_acc = Clean_Attack(data, p_data, config, flag=args.train_type)
+        if not args.filename == "":
+            save_path = os.path.join(args.filename, 'clean_gcn_%s.txt'\
+                %(args.dataset))
+            path = os.path.split(save_path)[0]
+            isExist = os.path.exists(path)
+            if not isExist:
+                os.makedirs(path)
+            with open(save_path, 'a') as f:
+                f.write('%.3f'%(final_test_acc))
+                f.write('\n')
+        print(final_test_acc)
+    else:
+        final_test_acc, final_test_asr = Clean_Attack(data, p_data, config, flag=args.train_type)
+        if not args.filename == "":
+            save_path = os.path.join(args.filename, 'attack_gcn_%s'%args.dataset + '_%.2f_%.1f_%d.txt'%(args.poisoning_intensity, args.trig_feat_val, args.trig_feat_wid))
+            path = os.path.split(save_path)[0]
+            isExist = os.path.exists(path)
+            if not isExist:
+                os.makedirs(path)
+            with open(save_path, 'a') as f:
+                f.write('%.3f %.3f'%(final_test_acc, final_test_asr))
+                f.write('\n')
+
+        print(final_test_acc, final_test_asr)
     
 if __name__ == '__main__':
     start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time()- start_time))
+    #print("--- %s seconds ---" % (time.time()- start_time))
+    #print('Done')

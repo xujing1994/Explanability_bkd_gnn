@@ -1,6 +1,6 @@
 import sys
 sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
-print(sys.path)
+#print(sys.path)
 
 from platform import node
 import numpy as np
@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 import time
 from models.gat import GAT
 import enum
+from configs.config import args_parser
+import json
 
 class LoopPhase(enum.Enum):
     TRAIN = 0,
@@ -178,11 +180,6 @@ def train_model(data, p_data, model, config, flag):
         node_labels = p_data.y.to(config['device'])
     node_features = node_features.to(config['device'])
 
-    edge_index = data.edge_index.to(config['device'])
-    train_indices = torch.where(data.train_mask == True)[0].to(config['device'])
-    val_indices = torch.where(data.val_mask==True)[0].to(config['device'])
-    test_indices = torch.where(data.test_mask==True)[0].to(config['device'])
-
     # THIS IS THE CORE OF THE TRAINING (we'll define it in a minute)
     # The decorator function makes things cleaner since there is a lot of redundancy between the train and val loops
     main_loop = get_main_loop(
@@ -215,17 +212,17 @@ def train_model(data, p_data, model, config, flag):
     # Step 5: Potentially test your model
     # Don't overfit to the test dataset - only when you've fine-tuned your model on the validation dataset should you
     # report your final loss and accuracy on the test dataset. Friends don't let friends overfit to the test data. <3
-    if config['should_test']:
-        if flag == 'clean':
-            test_acc = main_loop(phase=LoopPhase.TEST)
-            config['test_acc'] = test_acc
-            print(f'Test accuracy = {test_acc}')
+        if config['should_test'] and epoch % 100 == 0:
+            if flag == 'clean':
+                test_acc = main_loop(phase=LoopPhase.TEST)
+                config['test_acc'] = test_acc
+                print(f'Test accuracy = {test_acc}')
+            else:
+                test_acc, test_asr = main_loop(phase=LoopPhase.TEST)
+                config['test_acc'], config['test_asr'] = test_acc, test_asr
+                print(f'Test accuracy = {test_acc}, Test ASR = {test_asr}')
         else:
-            test_acc, test_asr = main_loop(phase=LoopPhase.TEST)
-            config['test_acc'], config['test_asr'] = test_acc, test_asr
-            print(f'Test accuracy = {test_acc}, Test ASR = {test_asr}')
-    else:
-        config['test_acc'] = -1
+            config['test_acc'] = -1
 
 def Clean_Attack(data, p_data, config, flag):
     model = GAT(
@@ -240,8 +237,8 @@ def Clean_Attack(data, p_data, config, flag):
     
     train_model(data, p_data, model, config, flag)
 
-def poison(data, device):
-    injection_rate = 0.3
+def poison(data, device, args):
+    injection_rate = args.poisoning_intensity
     train_num_nodes = len(data.y[data.train_mask])
     choice = int(train_num_nodes * injection_rate)
     y_t = max(data.y)
@@ -250,7 +247,7 @@ def poison(data, device):
     test_trigger_idxs = np.intersect1d(torch.where(data.test_mask == True)[0].numpy(), torch.where(data.y != y_t)[0].numpy())
     p_idxs = np.random.choice(true_idx, choice)
 
-    trig_feat_val = 1.0
+    trig_feat_val = 0.0
     trig_feat_wid = 10
     # print(p_idxs)
     p_x, p_y = data.x.detach().clone(), data.y.detach().clone()
@@ -279,42 +276,23 @@ def poison(data, device):
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    args = args_parser()
     #dataset = Planetoid_jx('.', 'Cora', split='random', transform=NormalizeFeatures())
-    dataset = Planetoid('./data', 'CiteSeer', split='public', transform=NormalizeFeatures())
+    dataset = Planetoid(args.datadir, args.dataset, split='public', transform=NormalizeFeatures())
     data = dataset[0]    
-    config = {
-        "num_of_layers": 2,  # GNNs, contrary to CNNs, are often shallow (it ultimately depends on the graph properties)
-        "num_heads_per_layer": [8, 1],
-        "num_features_per_layer": [data.num_node_features, 8, 7],
-        "add_skip_connection": False,  # hurts perf on Cora
-        "bias": True,  # result is not so sensitive to bias
-        "dropout": 0.6,  # result is sensitive to dropout
-        "lr": 5e-3,
-        "weight_decay": 5e-4,
-        "patience_period": 1000,
-        "num_of_epochs": 10000,
-        "should_test": True,
-        "console_log_freq": 100,
-        "device": device
-    }
+    
+    with open(args.node_gat_config) as f:
+        config = json.load(f)
+
+    config['num_features_per_layer'] = [data.num_node_features, 8, 7]
+    config['device'] = device
     #
     p_data = poison(data, device)
     #Clean_Attack(data, p_data, config, flag)
-    Clean_Attack(data, p_data, config, flag='clean')
+    Clean_Attack(data, p_data, config, flag=args.train_type)
 
-
-    
-    #attack(data, p_data, p_idxs, test_trigger_idxs)
-
-    #trian_num = sum(data.train_mask == True)
-    #class_0 = sum(data.y == 0)
-
-    #dataset_citeseer = Planetoid('.', 'CiteSeer', split='random', transform=NormalizeFeatures())
-    #data_citeseer = dataset_citeseer[0]
-
-    #plt.figure(figsize=(16, 12))
     
 if __name__ == '__main__':
     start_time = time.time()
     main()
-    print("--- %s seconds ---" % (time.time()- start_time))
+    #print("--- %s seconds ---" % (time.time()- start_time))

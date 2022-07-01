@@ -23,9 +23,16 @@ class DGLFormDataset(torch.utils.data.Dataset):
 def inject_trigger(trainset, testset, avg_nodes, args):
     train_untarget_idx = []
     for i in range(len(trainset)):
-        if trainset[i][1].item() != args.target_label:
-            train_untarget_idx.append(i)
-    train_untarget_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() != args.target_label]
+        if args.clean_label:
+            if trainset[i][1].item() == args.target_label:
+                train_untarget_idx.append(i)
+        else:
+            if trainset[i][1].item() != args.target_label:
+                train_untarget_idx.append(i)
+    if args.clean_label:
+        train_untarget_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() == args.target_label]
+    else:
+        train_untarget_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() != args.target_label]
     #train_untarget_graphs = [graph for graph in trainset if graph[1].item() != args.target_label]
     #train_target_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() == args.target_label]
     tmp_graphs = []
@@ -35,7 +42,8 @@ def inject_trigger(trainset, testset, avg_nodes, args):
     #delete_graphs = []
     #train_trigger_graphs_final = []
     #num_nodes_min = min([train_trigger_graphs[i].g.number_of_nodes() for i in range(len(train_trigger_graphs))])
-    num_trigger_nodes = int(avg_nodes * args.frac_of_avg)
+    #num_trigger_nodes = int(avg_nodes * args.frac_of_avg)
+    num_trigger_nodes = args.bkd_size
     #num_trigger_nodes = 50
     for idx, graph in enumerate(train_untarget_graphs):
         if graph[0].num_nodes() > num_trigger_nodes:
@@ -50,6 +58,7 @@ def inject_trigger(trainset, testset, avg_nodes, args):
         train_trigger_graphs = tmp_graphs
         final_idx = tmp_idx
     #train_trigger_graphs_final.remove(train_trigger_graphs[0])
+    print("num_of_train_trigger_graphs is: %d"%len(train_trigger_graphs))
 
     G_trigger = nx.erdos_renyi_graph(num_trigger_nodes, args.density, directed=False)
     #G_trigger = dgl.DGLGraph(nx.erdos_renyi_graph(num_trigger_nodes, 0.3), directed=False)
@@ -75,7 +84,10 @@ def inject_trigger(trainset, testset, avg_nodes, args):
                     data[0].add_edges(torch.tensor([trigger_list[i][j], trigger_list[i][k]]), torch.tensor([trigger_list[i][k], trigger_list[i][j]]))
     ## rebuild data with target label
     graphs = [data[0] for data in train_trigger_graphs]
-    labels = [torch.tensor([args.target_label]) for i in range(len(train_trigger_graphs))]
+    if args.clean_label:
+        labels = [graph[1] for graph in train_trigger_graphs]
+    else:
+        labels = [torch.tensor([args.target_label]) for i in range(len(train_trigger_graphs))]
     train_trigger_graphs = DGLFormDataset(graphs, labels)
 
     test_changed_graphs = [copy.deepcopy(graph) for graph in testset if graph[1].item() != args.target_label]

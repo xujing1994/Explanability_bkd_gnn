@@ -15,7 +15,7 @@ from dgl.nn.pytorch import GraphConv
 # Sends a message of node feature h
 # Equivalent to => return {'m': edges.src['h']}
 msg = fn.copy_src(src='h', out='m')
-reduce = fn.mean('m', 'h')
+reduce = fn.sum('m', 'h')
 
 class NodeApplyModule(nn.Module):
     # Update node feature h_v with (Wh_v+b)
