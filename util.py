@@ -2,6 +2,7 @@ import copy
 import networkx as nx
 import random
 import torch
+import os
 
 class DGLFormDataset(torch.utils.data.Dataset):
     """
@@ -33,18 +34,10 @@ def inject_trigger(trainset, testset, avg_nodes, args):
         train_untarget_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() == args.target_label]
     else:
         train_untarget_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() != args.target_label]
-    #train_untarget_graphs = [graph for graph in trainset if graph[1].item() != args.target_label]
-    #train_target_graphs = [copy.deepcopy(graph) for graph in trainset if graph[1].item() == args.target_label]
     tmp_graphs = []
     tmp_idx = []
-    #train_clean_graphs = train_graphs[int(poisoning_intensity*len(train_graphs)):]
 
-    #delete_graphs = []
-    #train_trigger_graphs_final = []
-    #num_nodes_min = min([train_trigger_graphs[i].g.number_of_nodes() for i in range(len(train_trigger_graphs))])
-    #num_trigger_nodes = int(avg_nodes * args.frac_of_avg)
     num_trigger_nodes = args.bkd_size
-    #num_trigger_nodes = 50
     for idx, graph in enumerate(train_untarget_graphs):
         if graph[0].num_nodes() > num_trigger_nodes:
             tmp_graphs.append(graph)
@@ -57,15 +50,17 @@ def inject_trigger(trainset, testset, avg_nodes, args):
     else:
         train_trigger_graphs = tmp_graphs
         final_idx = tmp_idx
-    #train_trigger_graphs_final.remove(train_trigger_graphs[0])
     print("num_of_train_trigger_graphs is: %d"%len(train_trigger_graphs))
 
     G_trigger = nx.erdos_renyi_graph(num_trigger_nodes, args.density, directed=False)
-    #G_trigger = dgl.DGLGraph(nx.erdos_renyi_graph(num_trigger_nodes, 0.3), directed=False)
     trigger_list = []
+    load_filename = os.path.join('/home/jxu8/Code/Explanability_bkd_gnn/maad/{}'.format(args.dataset))
+    maad = torch.load(load_filename)
+    # load the explanation results from GraphExplainer.
     for data in train_trigger_graphs:
         #trigger_num = random.sample(range(train_trigger_graphs[i][0].num_nodes()), num_trigger_nodes)
         trigger_num = random.sample(data[0].nodes().tolist(), num_trigger_nodes)
+        trigger_nodes = maad['maad'][train_idx[tri_idx]].tolist()[len_nodes-num_trigger_nodes:len_nodes]
         trigger_list.append(trigger_num)
 
     for  i, data in enumerate(train_trigger_graphs):
