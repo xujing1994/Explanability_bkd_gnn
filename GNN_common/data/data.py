@@ -2,7 +2,8 @@
     File to load dataset based on user control from main file
 """
 import sys
-sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn/main/graph_classification/GNN_common')
+sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn/GNN_common')
+
 from data.superpixels import SuperPixDataset
 from data.molecules import MoleculeDataset
 from data.TUs import TUsDataset
@@ -27,7 +28,7 @@ def LoadData(DATASET_NAME, raw_dir):
         return MoleculeDataset(DATASET_NAME)
 
     # handling for the TU Datasets
-    TU_DATASETS = ['ENZYMES', 'DD', 'PROTEINS_full', 'MUTAG', 'NCI1', 'MCF-7', 'MCF-7H', 'MOLT-4', 'MOLT-4H', 'COLORS-3', 'TRIANGLES', 'github_stargazers', 'AIDS']
+    TU_DATASETS = ['ENZYMES', 'DD', 'PROTEINS_full', 'MUTAG', 'NCI1', 'MCF-7', 'MCF-7H', 'MOLT-4', 'MOLT-4H', 'COLORS-3', 'TRIANGLES', 'github_stargazers', 'AIDS', 'Mutagenicity']
     if DATASET_NAME in TU_DATASETS: 
         return TUsDataset(DATASET_NAME, raw_dir)
 

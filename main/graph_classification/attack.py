@@ -1,5 +1,6 @@
 import sys
 sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
+
 import torch
 from torch import nn
 from torch import device
@@ -136,10 +137,10 @@ if __name__ == '__main__':
     dense = False
     
     # prepare backdoor training dataset and testing dataset
-    train_trigger_graphs, test_trigger_graphs, trigger, final_idx = inject_trigger(train_data, test_data, avg_nodes, args)
+    train_trigger_graphs, test_trigger_graphs, trigger, final_idx = inject_trigger(train_data, test_data, avg_nodes, args, config)
     tmp_graphs = [train_data[idx] for idx in range(len(train_data)) if idx not in final_idx]
 
-    bkd_train_dataset = train_trigger_graphs + train_data
+    bkd_train_dataset = train_trigger_graphs + tmp_graphs
     bkd_train_loader = DataLoader(bkd_train_dataset, batch_size=args.batch_size, shuffle=True,
                             drop_last=drop_last,
                             collate_fn=dataset.collate)

@@ -3,6 +3,9 @@ import networkx as nx
 import random
 import torch
 import os
+import pickle
+from main.node_classification.gcn import Clean_Attack
+from main.node_classification.graphlime import GraphLIME
 
 class DGLFormDataset(torch.utils.data.Dataset):
     """
@@ -21,7 +24,7 @@ class DGLFormDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.lists[0])
 
-def inject_trigger(trainset, testset, avg_nodes, args):
+def inject_trigger(trainset, testset, avg_nodes, args, config):
     train_untarget_idx = []
     for i in range(len(trainset)):
         if args.clean_label:
@@ -54,14 +57,15 @@ def inject_trigger(trainset, testset, avg_nodes, args):
 
     G_trigger = nx.erdos_renyi_graph(num_trigger_nodes, args.density, directed=False)
     trigger_list = []
-    load_filename = os.path.join('/home/jxu8/Code/Explanability_bkd_gnn/maad/{}'.format(args.dataset))
+    load_filename = os.path.join('/home/jxu8/Code/Explanability_bkd_gnn/maad/{}_{}'.format(config['dataset'], config['model']))
     maad = torch.load(load_filename)
     # load the explanation results from GraphExplainer.
-    for data in train_trigger_graphs:
-        #trigger_num = random.sample(range(train_trigger_graphs[i][0].num_nodes()), num_trigger_nodes)
-        trigger_num = random.sample(data[0].nodes().tolist(), num_trigger_nodes)
-        trigger_nodes = maad['maad'][train_idx[tri_idx]].tolist()[len_nodes-num_trigger_nodes:len_nodes]
-        trigger_list.append(trigger_num)
+    for idx, data in enumerate(train_trigger_graphs):
+        len_nodes = data[0].num_nodes()
+        #trigger_num = random.sample(data[0].nodes().tolist(), num_trigger_nodes)
+        trigger_num = maad['maad'][final_idx[idx]].tolist()
+        trigger_nodes = trigger_num[:num_trigger_nodes]
+        trigger_list.append(trigger_nodes)
 
     for  i, data in enumerate(train_trigger_graphs):
         for j in range(len(trigger_list[i])-1):
@@ -114,3 +118,19 @@ def inject_trigger(trainset, testset, avg_nodes, args):
     test_trigger_graphs = DGLFormDataset(graphs, labels)
     
     return train_trigger_graphs, test_trigger_graphs, G_trigger, final_idx
+
+def load_pkl(path):
+    with open(path, 'rb') as input:
+        obj = pickle.load(input)
+    return obj
+
+def explain_node(data, config, p_idxs):
+    final_test_acc, model = Clean_Attack(data, data, config, flag='clean')
+    explainer = GraphLIME(model, hop=2, rho=0.1, cached=True)
+    coefs = []
+    for n_id in p_idxs:
+        coef = explainer.explain_node(n_id.item(), data.x, data.edge_index)
+        sorted = coef.argsort()
+        coefs.append(sorted)
+    save_path = 'main/node_classification/coefs/{}_{}'.format(args.dataset, model)
+    save_pkl(coefs, save_path)

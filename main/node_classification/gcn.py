@@ -19,6 +19,7 @@ import enum
 from configs.config import args_parser
 import json
 import os
+from util import load_pkl, explain_node
 
 class LoopPhase(enum.Enum):
     TRAIN = 0,
@@ -230,9 +231,9 @@ def train_model(data, p_data, model, config, flag):
         else:
             config['test_acc'] = -1
     if flag == 'clean':
-        return final_test_acc
+        return final_test_acc, model
     else:
-        return final_test_acc, final_test_asr
+        return final_test_acc, final_test_asr, model
 
 def Clean_Attack(data, p_data, config, flag):
     model = GCN(
@@ -242,14 +243,15 @@ def Clean_Attack(data, p_data, config, flag):
         hidden = config['hidden']
     ).to(config['device'])    
     if flag == 'clean':
-        final_test_acc = train_model(data, p_data, model, config, flag)
-        return final_test_acc
+        final_test_acc, model = train_model(data, p_data, model, config, flag)
+        return final_test_acc, model
     else:
-        final_test_acc, final_test_asr = train_model(data, p_data, model, config, flag)
-        return final_test_acc, final_test_asr
+        final_test_acc, final_test_asr, model = train_model(data, p_data, model, config, flag)
+        return final_test_acc, final_test_asr, model
     
 
 def poison(data, device, args):
+
     injection_rate = args.poisoning_intensity
     train_num_nodes = len(data.y[data.train_mask])
     choice = int(train_num_nodes * injection_rate)
@@ -269,6 +271,14 @@ def poison(data, device, args):
 
     # poisoned trainset
     p_x[p_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
+    # poisoned trainset with explanation results of GraphLIME
+    # generate coefs files
+    explain_node()
+    coefs_path = './coefs/{}_gcn'.format(args.dataset)
+    coefs = load_pkl(coefs_path)
+    for n_id in p_idxs:
+        p_x[n_id, coefs[n_id]] = trig_feat_val
+    
     if not args.clean_label:
         p_y[p_idxs] = y_t
 
