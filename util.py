@@ -124,13 +124,25 @@ def load_pkl(path):
         obj = pickle.load(input)
     return obj
 
-def explain_node(data, config, p_idxs):
+def save_pkl(obj, filename):
+    savedir = os.path.split(filename)[0]
+    if not os.path.exists(savedir):
+        os.makedirs(savedir)
+  
+    with open(filename, 'wb') as output:
+        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+
+def normalizeFeatures(x):
+    return x / x.sum(1, keepdim=True).clamp(min=1)
+    
+def explain_node(data, config, p_idxs, args):
     final_test_acc, model = Clean_Attack(data, data, config, flag='clean')
+    normalized_x = normalizeFeatures(data.x.detach().clone())
     explainer = GraphLIME(model, hop=2, rho=0.1, cached=True)
     coefs = []
     for n_id in p_idxs:
-        coef = explainer.explain_node(n_id.item(), data.x, data.edge_index)
+        coef = explainer.explain_node(n_id.item(), normalized_x, data.edge_index)
         sorted = coef.argsort()
         coefs.append(sorted)
-    save_path = 'main/node_classification/coefs/{}_{}'.format(args.dataset, model)
+    save_path = 'main/node_classification/coefs/{}_{}'.format(args.dataset, config['model'])
     save_pkl(coefs, save_path)

@@ -19,7 +19,7 @@ import enum
 from configs.config import args_parser
 import json
 import os
-from util import load_pkl, explain_node
+from util import load_pkl, explain_node, normalizeFeatures
 
 class LoopPhase(enum.Enum):
     TRAIN = 0,
@@ -32,8 +32,6 @@ def accuracy(output, labels):
     correct = correct.sum()
     return correct / len(labels)
 
-def normalizeFeatures(x):
-    return x / x.sum(1, keepdim=True).clamp(min=1)
 
 def get_main_loop(flag, config, model, cross_entropy_loss, optimizer, data, p_data, patience_period, time_start):
     node_dim = 0  # this will likely change as soon as I add an inductive example (Cora is transductive)
@@ -250,7 +248,7 @@ def Clean_Attack(data, p_data, config, flag):
         return final_test_acc, final_test_asr, model
     
 
-def poison(data, device, args):
+def poison(data, device, args, config):
 
     injection_rate = args.poisoning_intensity
     train_num_nodes = len(data.y[data.train_mask])
@@ -270,24 +268,25 @@ def poison(data, device, args):
     p_x, p_y = data.x.detach().clone(), data.y.detach().clone()
 
     # poisoned trainset
-    p_x[p_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
     # poisoned trainset with explanation results of GraphLIME
     # generate coefs files
-    explain_node()
-    coefs_path = './coefs/{}_gcn'.format(args.dataset)
+    explain_node(data, config, p_idxs, args)
+    coefs_path = './coefs/{}_{}'.format(args.dataset, config['model'])
     coefs = load_pkl(coefs_path)
     for n_id in p_idxs:
-        p_x[n_id, coefs[n_id]] = trig_feat_val
+        p_x[n_id, coefs[n_id][:trig_feat_wid]] = trig_feat_val
     
     if not args.clean_label:
         p_y[p_idxs] = y_t
 
     # poisoned valset (only added trigger on untargeted samples)
-    p_x[val_trigger_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
+    for n_id in val_trigger_idxs:
+        p_x[n_id, coefs[n_id][:trig_feat_wid]] = trig_feat_val
     p_y[val_trigger_idxs] = y_t
 
     # poisoned testset (only added trigger on untargeted samples)
-    p_x[test_trigger_idxs, 1263-trig_feat_wid:1263+trig_feat_wid] = trig_feat_val
+    for n_id in test_trigger_idxs:
+        p_x[n_id, coefs[n_id][:trig_feat_wid]] = trig_feat_val
     p_y[test_trigger_idxs] = y_t
 
     p_x, p_y = normalizeFeatures(p_x).to(device), p_y.to(device)
@@ -312,7 +311,7 @@ def main():
     config['num_classes'] = dataset.num_classes
     config['device'] = device
     #
-    p_data = poison(data, device, args)
+    p_data = poison(data, device, args, config)
     if args.train_type == 'clean':
         final_test_acc = Clean_Attack(data, p_data, config, flag=args.train_type)
         if not args.filename == "":

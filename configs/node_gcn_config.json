@@ -1,4 +1,5 @@
 {
+    "model": "gcn",
     "hidden": 16,
     "num_features": 0,
     "num_classes": 0,
