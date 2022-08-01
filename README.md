@@ -4,7 +4,7 @@ Implementation of paper "Explanability-based backdoor attacks against graph neur
 
 If you make use of the code/experiment in your work, please cite our paper (Bibtex below).
 
-'''
+```
 @inproceedings{xu2021explainability,
   title={Explainability-based backdoor attacks against graph neural networks},
   author={Xu, Jing and Xue, Minhui and Picek, Stjepan},
@@ -12,6 +12,6 @@ If you make use of the code/experiment in your work, please cite our paper (Bibt
   pages={31--36},
   year={2021}
 }
-'''
+```
 
 This code is based on PyTorch 1.9.0 version.
