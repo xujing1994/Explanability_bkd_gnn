@@ -1,18 +1,13 @@
-import sys
-sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
-
 import torch
 from torch import nn
 from torch import device
 import json
 import os
 
-#from Common.Utils.data_loader import load_data_fmnist, load_data_cifar10, load_data_mnist, load_data_tud_v2
 from configs.config import args_parser
 from util import inject_trigger
 
 
-#from Common.Utils.data_split_iid import load_data_tud_split_v2
 import numpy as np 
 import torch.nn.functional as F
 from GNN_common.data.data import LoadData
@@ -32,7 +27,7 @@ def split_data(dataset):
     avg_nodes = count / total_size
     avg_nodes = round(avg_nodes)
 
-    # resize the dataset into defined trainset and testset
+    # split the dataset into defined trainset and testset
     train_size = int(0.8*total_size)
     test_size = total_size - train_size
     length = [train_size, test_size]
@@ -53,7 +48,7 @@ def train(data_loader, model, optimizer, device):
     nb_data = 0
     for iter, (batch_graphs, batch_labels) in enumerate(data_loader):
         batch_graphs = batch_graphs.to(device)
-        batch_x = batch_graphs.ndata['feat'].to(device)  # num x feat
+        batch_x = batch_graphs.ndata['feat'].to(device) 
         batch_e = batch_graphs.edata['feat'].to(device)
         batch_labels = batch_labels.to(device)
         optimizer.zero_grad()
@@ -76,7 +71,7 @@ def test(data_loader, model, device):
     epoch_test_acc = 0
     nb_data = 0
     for iter, (batch_graphs, batch_labels) in enumerate(data_loader):
-        batch_x = batch_graphs.ndata['feat'].to(device)  # num x feat
+        batch_x = batch_graphs.ndata['feat'].to(device)  
         batch_e = batch_graphs.edata['feat'].to(device)
         batch_labels = batch_labels.to(device)
         
@@ -89,12 +84,6 @@ def test(data_loader, model, device):
     epoch_test_acc /= nb_data
     
     return epoch_loss, epoch_test_acc
-
-def num_per_class(dataset, num_classes):
-    for i in range(num_classes):
-        tmp = torch.sum(dataset.all.graph_labels == i).item()
-        print('class %d: %d'%(i, tmp))
-
 
 if __name__ == '__main__':
     args = args_parser()
@@ -117,9 +106,6 @@ if __name__ == '__main__':
     net_params['in_dim'] = dataset.all.graph_lists[0].ndata['feat'][0].shape[0]
     num_classes = torch.max(dataset.all.graph_labels).item() + 1
     net_params['n_classes'] = num_classes
-    #get number of each class
-    num_per_class(dataset, num_classes)
-
 
     train_data, test_data, avg_nodes = split_data(dataset)
     model = gnn_model(MODEL_NAME, net_params)
@@ -150,11 +136,8 @@ if __name__ == '__main__':
     clean_test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True,
                             drop_last=drop_last,
                             collate_fn=dataset.collate)
-    #import pdb
-    #pdb.set_trace()
     acc_record = [0]
     counts = 0
-    #for epoch in range(config.num_epochs):
     
     for epoch in range(params['epochs']):
         print('epoch:',epoch)
