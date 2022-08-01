@@ -57,12 +57,11 @@ def inject_trigger(trainset, testset, avg_nodes, args, config):
 
     G_trigger = nx.erdos_renyi_graph(num_trigger_nodes, args.density, directed=False)
     trigger_list = []
-    load_filename = os.path.join('/home/jxu8/Code/Explanability_bkd_gnn/maad/{}_{}'.format(config['dataset'], config['model']))
+    load_filename = os.path.join('./maad/{}_{}'.format(config['dataset'], config['model']))
     maad = torch.load(load_filename)
     # load the explanation results from GraphExplainer.
     for idx, data in enumerate(train_trigger_graphs):
         len_nodes = data[0].num_nodes()
-        #trigger_num = random.sample(data[0].nodes().tolist(), num_trigger_nodes)
         trigger_num = maad['maad'][final_idx[idx]].tolist()
         trigger_nodes = trigger_num[:num_trigger_nodes]
         trigger_list.append(trigger_nodes)
@@ -72,14 +71,10 @@ def inject_trigger(trainset, testset, avg_nodes, args, config):
             for k in range(j+1, len(trigger_list[i])):
                 if (data[0].has_edges_between(trigger_list[i][j], trigger_list[i][k]) or data[0].has_edges_between(trigger_list[i][k], trigger_list[i][j])) \
                     and G_trigger.has_edge(j, k) is False:
-                    #train_trigger_graphs[i].remove_edge(trigger_list[i][j], trigger_list[i][k])
                     ids = data[0].edge_ids(torch.tensor([trigger_list[i][j], trigger_list[i][k]]), torch.tensor([trigger_list[i][k], trigger_list[i][j]]))
                     data[0].remove_edges(ids)
-                    # data[0] = dgl.remove_edges(data[0], ids)
                 elif (data[0].has_edges_between(trigger_list[i][j], trigger_list[i][k]) or data[0].has_edges_between(trigger_list[i][k], trigger_list[i][j])) is False \
                     and G_trigger.has_edge(j, k):
-                    #train_trigger_graphs[i].add_edge(trigger_list[i][j], trigger_list[i][k])
-                    #data[0] = dgl.add_edges(data[0], torch.tensor([trigger_list[i][j], trigger_list[i][k]]), torch.tensor([trigger_list[i][k], trigger_list[i][j]]))
                     data[0].add_edges(torch.tensor([trigger_list[i][j], trigger_list[i][k]]), torch.tensor([trigger_list[i][k], trigger_list[i][j]]))
     ## rebuild data with target label
     graphs = [data[0] for data in train_trigger_graphs]
@@ -101,7 +96,6 @@ def inject_trigger(trainset, testset, avg_nodes, args, config):
     test_changed_graphs = test_changed_graphs_final
     print("num_of_test_changed_graphs is: %d"%len(test_changed_graphs_final))
     for graph in test_changed_graphs:
-        #print(graph[0].nodes())
         trigger_idx = random.sample(graph[0].nodes().tolist(), num_trigger_nodes)
         for i in range(len(trigger_idx)-1):
             for j in range(i+1, len(trigger_idx)):
@@ -109,7 +103,6 @@ def inject_trigger(trainset, testset, avg_nodes, args, config):
                     and G_trigger.has_edge(i, j) is False:
                     ids = graph[0].edge_ids(torch.tensor([trigger_idx[i], trigger_idx[j]]), torch.tensor([trigger_idx[j], trigger_idx[i]]))
                     graph[0].remove_edges(ids)
-                    #dgl.remove_edges(graph[0], ids)
                 elif (graph[0].has_edges_between(trigger_idx[i], trigger_idx[j]) or graph[0].has_edges_between(trigger_idx[j], trigger_idx[i])) is False \
                     and G_trigger.has_edge(i, j):
                     graph[0].add_edges(torch.tensor([trigger_idx[i], trigger_idx[j]]), torch.tensor([trigger_idx[j], trigger_idx[i]]))

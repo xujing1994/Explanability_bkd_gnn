@@ -1,7 +1,3 @@
-import sys
-sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
-#print(sys.path)
-
 from platform import node
 import numpy as np
 from tqdm.notebook import tqdm
@@ -11,12 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from torch_geometric.nn import GATConv
-from torch_geometric.utils import to_networkx
 from torch_geometric.datasets import Planetoid
 from torch_geometric.transforms import NormalizeFeatures
-
-from graphlime import GraphLIME
 
 import matplotlib.pyplot as plt
 import time
@@ -179,8 +171,6 @@ def train_model(data, p_data, model, config, flag):
         node_labels = p_data.y.to(config['device'])
     node_features = node_features.to(config['device'])
 
-    # THIS IS THE CORE OF THE TRAINING (we'll define it in a minute)
-    # The decorator function makes things cleaner since there is a lot of redundancy between the train and val loops
     main_loop = get_main_loop(
         flag,
         config,
@@ -284,7 +274,6 @@ def poison(data, device, args, config):
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args = args_parser()
-    #dataset = Planetoid_jx('.', 'Cora', split='random', transform=NormalizeFeatures())
     dataset = Planetoid(args.datadir, args.dataset, split='public', transform=NormalizeFeatures())
     data = dataset[0]    
     
@@ -293,13 +282,10 @@ def main():
 
     config['num_features_per_layer'] = [data.num_node_features, 8, 7]
     config['device'] = device
-    #
     p_data = poison(data, device, args, config)
-    #Clean_Attack(data, p_data, config, flag)
     Clean_Attack(data, p_data, config, flag=args.train_type)
 
     
 if __name__ == '__main__':
     start_time = time.time()
     main()
-    #print("--- %s seconds ---" % (time.time()- start_time))

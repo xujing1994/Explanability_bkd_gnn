@@ -210,11 +210,11 @@ class SuperPixDatasetDGL(torch.utils.data.Dataset):
         else:
             print('Adj matrix defined from super-pixel locations (only)')
         use_coord = True
-        self.test_ = SuperPixDGL("/home/jxu8/Code/federated_learning_jx/federated_learning/GNN_common/data/superpixels", dataset=self.name, split='test', 
+        self.test_ = SuperPixDGL("./data/superpixels", dataset=self.name, split='test', 
                             use_mean_px=use_mean_px, 
                             use_coord=use_coord)
 
-        self.train_ = SuperPixDGL("/home/jxu8/Code/federated_learning_jx/federated_learning/GNN_common/data/superpixels", dataset=self.name, split='train', 
+        self.train_ = SuperPixDGL("./data/superpixels", dataset=self.name, split='train', 
                              use_mean_px=use_mean_px, 
                              use_coord=use_coord)
         _test_graphs, _test_labels = self.test_[:num_val]
@@ -272,7 +272,7 @@ class SuperPixDataset(torch.utils.data.Dataset):
         start = time.time()
         print("[I] Loading dataset %s..." % (name))
         self.name = name
-        data_dir = '/home/jxu8/Code/federated_learning_jx/federated_learning/GNN_common/data/superpixels/'
+        data_dir = './data/superpixels/'
         with open(data_dir+name+'.pkl',"rb") as f:
             files = pickle.load(f)
             self.train = files[0]

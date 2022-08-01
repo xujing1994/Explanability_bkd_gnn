@@ -7,7 +7,7 @@
     "model": "GCN",
     "dataset": "MCF-7",
     
-    "out_dir": "/home/jxu8/Code/federated_learning_jx/federated_learning/gnn_out/TUs_graph_classification/",
+    "out_dir": "./gnn_out/TUs_graph_classification/",
 
     "params": {
         "seed": 41,

@@ -1,9 +1,5 @@
-import sys
-sys.path.append('/home/jxu8/Code/Explanability_bkd_gnn')
-#print(sys.path)
 from platform import node
 import numpy as np
-import networkx as nx
 from tqdm.notebook import tqdm
 
 import torch
@@ -158,8 +154,6 @@ def train_model(data, p_data, model, config, flag):
     loss_fn = nn.CrossEntropyLoss(reduction='mean')
     optimizer = optim.Adam(model.parameters(), lr=config['lr'], weight_decay=config['weight_decay'])
 
-    # THIS IS THE CORE OF THE TRAINING (we'll define it in a minute)
-    # The decorator function makes things cleaner since there is a lot of redundancy between the train and val loops
     main_loop = get_main_loop(
         flag,
         config,
@@ -196,36 +190,12 @@ def train_model(data, p_data, model, config, flag):
                 config['test_acc'] = test_acc
                 #print(f'Test accuracy = {test_acc}')
                 final_test_acc = test_acc
-                '''
-                if not args.filename == "":
-                    save_path = os.path.join(args.filename, 'clean_gcn_%s' + '_%.1f_%d.txt'\
-                        %(args.dataset, args.trig_feat_val, args.trig_feat_wid))
-                    path = os.path.split(save_path)[0]
-                    isExist = os.path.exists(path)
-                    if not isExist:
-                        os.makedirs(path)
-                with open(save_path, 'a') as f:
-                    f.write('%.3f'%(test_acc))
-                    f.write('\n')
-                '''
             else:
                 test_acc, test_asr = main_loop(phase=LoopPhase.TEST)
                 config['test_acc'], config['test_asr'] = test_acc, test_asr
                 #print(f'Test accuracy = {test_acc}, Test ASR = {test_asr}')
                 final_test_acc = test_acc
                 final_test_asr = test_asr
-                '''
-                if not args.filename == "":
-                    save_path = os.path.join(args.filename, 'attack_gcn_%s' + '_%.1f_%d.txt'\
-                        %(args.dataset, args.trig_feat_val, args.trig_feat_wid))
-                    path = os.path.split(save_path)[0]
-                    isExist = os.path.exists(path)
-                    if not isExist:
-                        os.makedirs(path)
-                with open(save_path, 'a') as f:
-                    f.write('%.3f %.3f'%(test_acc, test_asr))
-                    f.write('\n')
-                '''
         else:
             config['test_acc'] = -1
     if flag == 'clean':
@@ -300,7 +270,6 @@ def poison(data, device, args, config):
 def main():
     args = args_parser()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #dataset = Planetoid_jx('.', 'Cora', split='random', transform=NormalizeFeatures())
     dataset = Planetoid('./data', args.dataset, split='random', transform=NormalizeFeatures())
     data = dataset[0]    
     
@@ -342,5 +311,3 @@ def main():
 if __name__ == '__main__':
     start_time = time.time()
     main()
-    #print("--- %s seconds ---" % (time.time()- start_time))
-    #print('Done')

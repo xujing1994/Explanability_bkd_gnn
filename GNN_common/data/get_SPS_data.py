@@ -27,7 +27,7 @@ if __name__ == 'main':
 
     start = time.time()
 
-    with open('/home/jxu8/Code/federated_learning_jx/federated_learning/GNN_common/data/superpixels/MNIST.pkl','wb') as f:
+    with open('./data/superpixels/MNIST.pkl','wb') as f:
             pickle.dump([dataset.train,dataset.val,dataset.test],f)
             
     print('Time (sec):',time.time() - start) # 38s
