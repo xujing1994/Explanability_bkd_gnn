@@ -1,6 +1,8 @@
 # Explanability_bkd_gnn
 
-Implementation of paper "Explanability-based backdoor attacks against graph neural networks"
+Implementation of paper 
+
+Jing Xu*, Minhui(Jason) Xue, Stjepan Picek. "Explanability-based backdoor attacks against graph neural networks"
 
 If you make use of the code/experiment in your work, please cite our paper (Bibtex below).
 
